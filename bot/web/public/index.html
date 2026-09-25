@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Law Guardian</title>
+  <meta name="description" content="Understand a contract before you sign it — or get one drafted for you. Uzbek, Russian and English.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">§</span>
+      <div class="brand-text">
+        <span class="brand-name">Law Guardian</span>
+        <span class="brand-tag" data-i18n="tagline"></span>
+      </div>
+    </div>
+    <nav class="topbar-actions">
+      <a class="tg-link" href="https://t.me/Law_guardian_bot" target="_blank" rel="noopener">
+        <span data-i18n="telegram"></span> <strong>@Law_guardian_bot</strong>
+      </a>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="uz">UZ</button>
+        <button type="button" data-lang="ru">RU</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <button type="button" class="btn btn-quiet" id="new-chat" data-i18n="newChat"></button>
+    </nav>
+  </header>
+
+  <div class="mobile-tabs" role="tablist">
+    <button type="button" role="tab" data-pane="chat" class="active" data-i18n="tabChat"></button>
+    <button type="button" role="tab" data-pane="doc" data-i18n="tabDoc"></button>
+  </div>
+
+  <main class="layout">
+    <!-- ── Chat ──────────────────────────────────────────────────────────── -->
+    <section class="pane chat-pane active" data-pane="chat" id="chat-pane">
+      <div class="messages" id="messages" aria-live="polite">
+        <div class="intro" id="intro">
+          <h1 data-i18n="introTitle"></h1>
+
+          <div class="intro-card">
+            <h2 data-i18n="reviewTitle"></h2>
+            <p data-i18n="reviewBody"></p>
+            <div class="intro-actions">
+              <button type="button" class="btn btn-primary" id="intro-upload" data-i18n="upload"></button>
+              <button type="button" class="btn" id="try-sample" data-i18n="trySample"></button>
+            </div>
+            <button type="button" class="link-btn" id="try-tricky" data-i18n="tryTricky"></button>
+          </div>
+
+          <div class="intro-card">
+            <h2 data-i18n="draftTitle"></h2>
+            <p data-i18n="draftBody"></p>
+            <div class="examples" id="examples"></div>
+          </div>
+
+          <p class="fineprint" data-i18n="privacy"></p>
+        </div>
+      </div>
+
+      <form class="composer" id="composer">
+        <div class="attachments" id="attachments" hidden></div>
+        <div class="composer-row">
+          <button type="button" class="icon-btn" id="attach" aria-label="Attach">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M21 11.5 12.6 19.9a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <textarea id="input" rows="1" data-i18n-placeholder="placeholder"></textarea>
+          <button type="submit" class="send-btn" id="send" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,image/jpeg,image/png,image/webp" hidden>
+      </form>
+
+      <div class="drop-overlay" id="drop-overlay" hidden><span data-i18n="dropHere"></span></div>
+    </section>
+
+    <!-- ── Document ──────────────────────────────────────────────────────── -->
+    <section class="pane doc-pane" data-pane="doc" id="doc-pane">
+      <div class="doc-toolbar" id="doc-toolbar" hidden>
+        <label class="doc-select-label">
+          <span class="visually-hidden" data-i18n="documents"></span>
+          <select id="doc-select"></select>
+        </label>
+        <div class="doc-toolbar-actions" id="doc-actions"></div>
+      </div>
+
+      <div class="doc-body" id="doc-body">
+        <div class="doc-empty" id="doc-empty">
+          <div class="paper-stack" aria-hidden="true">
+            <div class="paper-line w80"></div>
+            <div class="paper-line w95"></div>
+            <div class="paper-line w60 hl-high"></div>
+            <div class="paper-line w90"></div>
+            <div class="paper-line w70 hl-medium"></div>
+            <div class="paper-line w85"></div>
+          </div>
+          <h2 data-i18n="docEmptyTitle"></h2>
+          <p data-i18n="docEmptyBody"></p>
+          <ul class="legend">
+            <li><span class="swatch sev-high"></span><span data-i18n="sevHigh"></span></li>
+            <li><span class="swatch sev-medium"></span><span data-i18n="sevMedium"></span></li>
+            <li><span class="swatch sev-low"></span><span data-i18n="sevLow"></span></li>
+          </ul>
+          <section class="trust" id="trust" hidden></section>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
