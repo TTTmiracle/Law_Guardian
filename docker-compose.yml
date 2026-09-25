@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lexhack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lexhack
+      POSTGRES_PASSWORD: lexhack
+      POSTGRES_DB: lexhack
+    # 5433 on the host: 5432 is already taken on the dev machine.
+    ports:
+      - "5433:5432"
+    volumes:
+      - lexhack_pg:/var/lib/postgresql/data
+
+volumes:
+  lexhack_pg:

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Local-only material
+submission/
+DEVPOST.md
+bot/eval/results.json
