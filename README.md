@@ -104,14 +104,30 @@ bot/
 
 Requirements: Node.js 20+, Docker, a [DeepSeek](https://platform.deepseek.com) API key, and optionally a Telegram bot token from [@BotFather](https://t.me/BotFather) (the web app runs without it).
 
+One command handles the rest — checks Node and Docker, creates `.env`, installs dependencies, starts PostgreSQL, and applies the schema:
+
+```bash
+./setup.sh
+```
+
+Open `.env` and set `DEEPSEEK_API_KEY`, then:
+
+```bash
+cd bot && npm run dev   # web app on http://localhost:3100; the bot starts polling if a token is set
+```
+
+<details>
+<summary>Or by hand, without the script</summary>
+
 ```bash
 cp .env.example .env          # add DEEPSEEK_API_KEY (and TELEGRAM_BOT_TOKEN)
 docker compose up -d          # PostgreSQL on localhost:5433
 cd bot
 npm install
 npm run db:migrate
-npm run dev                   # web app on http://localhost:3100; the bot starts polling if a token is set
+npm run dev
 ```
+</details>
 
 Click **Try a sample contract** on the home screen for a full review in about 20 seconds, or **the one hiding a trick aimed at AI reviewers** to see manipulation detection.
 
