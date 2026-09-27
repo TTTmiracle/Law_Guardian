@@ -28,6 +28,7 @@ import {
 import { locateQuote, type GroundedAnalysis } from '../core/documents/analyze';
 import { pdfFileName } from '../core/documents/render';
 import { createRevision } from '../core/revision';
+import { createConversation, listConversations, ownsConversation } from '../core/conversations';
 
 const PUBLIC_DIR = path.resolve(__dirname, '../../web/public');
 const EVAL_SUMMARY = path.resolve(__dirname, '../../eval/summary.json');
@@ -217,6 +218,24 @@ export function createWebApp(): express.Express {
     limits: { fileSize: MAX_FILE_BYTES, files: 10 },
   });
 
+  // ── Conversations: separate threads within one device's chat ────────────────
+  app.get(
+    '/api/conversations',
+    asyncRoute(async (req, res) => {
+      const userId = await findUser(req);
+      res.json({ conversations: userId ? await listConversations(userId) : [] });
+    })
+  );
+
+  app.post(
+    '/api/conversations',
+    asyncRoute(async (req, res) => {
+      const userId = await ensureUser(req, res);
+      const id = await createConversation(userId);
+      res.json({ id });
+    })
+  );
+
   // ── Chat ────────────────────────────────────────────────────────────────────
   app.post(
     '/api/chat',
@@ -227,8 +246,13 @@ export function createWebApp(): express.Express {
         return;
       }
       const userId = await ensureUser(req, res);
+      const conversationId = Number(req.body?.conversationId);
+      if (!Number.isInteger(conversationId) || !(await ownsConversation(userId, conversationId))) {
+        res.status(400).json({ error: 'badConversation' });
+        return;
+      }
       await guardedTurn(res, userId, async (emit) => {
-        const r = await runTurn(userId, message, emit);
+        const r = await runTurn(userId, message, emit, conversationId);
         return { reply: r.reply, focusDocumentId: r.focusDocumentId };
       });
     })
@@ -252,6 +276,11 @@ export function createWebApp(): express.Express {
       }
 
       const userId = await ensureUser(req, res);
+      const conversationId = Number(req.body?.conversationId);
+      if (!Number.isInteger(conversationId) || !(await ownsConversation(userId, conversationId))) {
+        res.status(400).json({ error: 'badConversation' });
+        return;
+      }
       await guardedTurn(res, userId, async (emit) => {
         emit({ type: 'reading', source: allImages ? 'photos' : 'file', count: files.length });
         const result = allImages
@@ -262,25 +291,26 @@ export function createWebApp(): express.Express {
         emit({ type: 'read', chars: result.text.length });
 
         const note = uploadNote(result.title, result.docId, result.text, caption);
-        const r = await runTurn(userId, note, emit);
+        const r = await runTurn(userId, note, emit, conversationId);
         return { reply: r.reply, focusDocumentId: r.focusDocumentId ?? result.docId };
       });
     })
   );
 
-  // ── History, for restoring the chat after a reload ─────────────────────────
+  // ── History, for restoring one thread after a reload or a switch ───────────
   app.get(
     '/api/history',
     asyncRoute(async (req, res) => {
       const userId = await findUser(req);
-      if (!userId) {
+      const conversationId = Number(req.query.conversationId);
+      if (!userId || !Number.isInteger(conversationId) || !(await ownsConversation(userId, conversationId))) {
         res.json({ messages: [] });
         return;
       }
       const rows = await db
         .select({ role: messages.role, content: messages.content })
         .from(messages)
-        .where(eq(messages.userId, userId))
+        .where(eq(messages.conversationId, conversationId))
         .orderBy(desc(messages.createdAt))
         .limit(60);
       res.json({ messages: rows.reverse() });
@@ -380,12 +410,6 @@ export function createWebApp(): express.Express {
     } catch {
       res.status(404).json({ error: 'notFound' });
     }
-  });
-
-  // ── Start over: forget this browser's session ──────────────────────────────
-  app.post('/api/reset', (_req, res) => {
-    res.clearCookie(COOKIE);
-    res.json({ ok: true });
   });
 
   // ── Errors ──────────────────────────────────────────────────────────────────
