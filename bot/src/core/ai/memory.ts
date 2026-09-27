@@ -26,18 +26,19 @@ export interface LoadedHistory {
 }
 
 /**
- * Load the most recent conversation turns for this user, oldest-first (the
- * order the model expects). Optionally summarises everything older than the
- * recent window.
+ * Load the most recent turns of one thread, oldest-first (the order the
+ * model expects). Optionally summarises everything older than the recent
+ * window. Scoped to a conversation, not a whole user — that's what keeps
+ * separate threads from bleeding into each other's context.
  */
 export async function loadHistory(
-  userId: number,
+  conversationId: number,
   opts: { summarise?: (older: string) => Promise<string> } = {}
 ): Promise<LoadedHistory> {
   const recentDesc = await db
     .select()
     .from(messages)
-    .where(eq(messages.userId, userId))
+    .where(eq(messages.conversationId, conversationId))
     .orderBy(desc(messages.createdAt))
     .limit(RECENT_TURNS);
 
@@ -54,7 +55,7 @@ export async function loadHistory(
   const [{ count } = { count: 0 }] = await db
     .select({ count: countRows() })
     .from(messages)
-    .where(eq(messages.userId, userId));
+    .where(eq(messages.conversationId, conversationId));
 
   const total = Number(count);
 
@@ -63,7 +64,7 @@ export async function loadHistory(
     const olderDesc = await db
       .select()
       .from(messages)
-      .where(eq(messages.userId, userId))
+      .where(eq(messages.conversationId, conversationId))
       .orderBy(desc(messages.createdAt))
       .limit(SUMMARY_TRIGGER)
       .offset(RECENT_TURNS);

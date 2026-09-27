@@ -11,6 +11,7 @@ import { documents, messages } from '../db/schema';
 import { respond, type AgentEvent, type AgentResult } from './ai/agent';
 import { transcribeImages } from './ai/vision';
 import { detectKind, extractText, MIN_USEFUL_CHARS } from './documents/extract';
+import { getOrCreateDefaultConversation, touchConversation } from './conversations';
 
 /** Telegram's Bot API refuses downloads above this; the web uses the same cap. */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -91,19 +92,28 @@ export function pasteNote(docId: number, length: number): string {
  * history itself and appends the new message, so saving it first would show
  * the model every message twice (it did, and doubled the cost of every
  * pasted contract, until the eval suite caught it).
+ *
+ * `conversationId` is optional so Telegram and the eval suite don't have to
+ * know threads exist: omit it and the user's most recently active thread is
+ * reused (or a new one created), which is exactly the single continuous
+ * history this always had. The web app, which lets people hold several
+ * threads at once, always passes one explicitly.
  */
 export async function runTurn(
   userId: number,
   userMessage: string,
-  onEvent?: (e: AgentEvent) => void
+  onEvent?: (e: AgentEvent) => void,
+  conversationId?: number
 ): Promise<AgentResult> {
-  const result = await respond({ userId, userMessage, onEvent });
+  const convId = conversationId ?? (await getOrCreateDefaultConversation(userId));
+  const result = await respond({ userId, conversationId: convId, userMessage, onEvent });
   // A pasted contract is now a stored document; history keeps a pointer rather
   // than re-sending thousands of characters with every later message.
   const content = result.savedDocumentId
     ? pasteNote(result.savedDocumentId, userMessage.length)
     : userMessage;
-  await db.insert(messages).values({ userId, role: 'user', content });
-  await db.insert(messages).values({ userId, role: 'assistant', content: result.reply });
+  await db.insert(messages).values({ userId, conversationId: convId, role: 'user', content });
+  await db.insert(messages).values({ userId, conversationId: convId, role: 'assistant', content: result.reply });
+  await touchConversation(convId, userMessage);
   return result;
 }

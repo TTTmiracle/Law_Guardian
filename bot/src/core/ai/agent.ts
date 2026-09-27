@@ -66,10 +66,11 @@ export type AgentEvent =
 
 export async function respond(params: {
   userId: number;
+  conversationId: number;
   userMessage: string;
   onEvent?: (e: AgentEvent) => void;
 }): Promise<AgentResult> {
-  const { userId, userMessage } = params;
+  const { userId, conversationId, userMessage } = params;
   const emit = (e: AgentEvent) => {
     try {
       params.onEvent?.(e);
@@ -84,7 +85,7 @@ export async function respond(params: {
   let focusDocumentId: number | null = null;
   let savedDocumentId: number | null = null;
 
-  const history = await loadHistory(userId, { summarise });
+  const history = await loadHistory(conversationId, { summarise });
 
   const systemParts = [buildSystemPrompt()];
   if (history.summary) {
