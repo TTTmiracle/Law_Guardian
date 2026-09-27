@@ -32,11 +32,21 @@
   </header>
 
   <div class="mobile-tabs" role="tablist">
+    <button type="button" role="tab" data-pane="chats" data-i18n="tabChats"></button>
     <button type="button" role="tab" data-pane="chat" class="active" data-i18n="tabChat"></button>
     <button type="button" role="tab" data-pane="doc" data-i18n="tabDoc"></button>
   </div>
 
   <main class="layout">
+    <!-- ── Chats (threads on this device) ───────────────────────────────── -->
+    <aside class="pane sidebar" data-pane="chats" id="chats-pane">
+      <div class="sidebar-head">
+        <span data-i18n="tabChats"></span>
+        <button type="button" class="btn btn-quiet sidebar-new" id="new-chat-side" data-i18n="newChat"></button>
+      </div>
+      <ul class="convo-list" id="convo-list"></ul>
+    </aside>
+
     <!-- ── Chat ──────────────────────────────────────────────────────────── -->
     <section class="pane chat-pane active" data-pane="chat" id="chat-pane">
       <div class="messages" id="messages" aria-live="polite">

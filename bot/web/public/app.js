@@ -16,6 +16,8 @@
       newChat: 'New conversation',
       tabChat: 'Chat',
       tabDoc: 'Document',
+      tabChats: 'Chats',
+      noChats: 'No conversations yet.',
       introTitle: 'Know what you are signing.',
       reviewTitle: 'Review a contract',
       reviewBody: "Upload a PDF, Word file or photos of the pages — or paste the text. You'll see what you are agreeing to and which clauses can hurt you.",
@@ -104,6 +106,8 @@
       newChat: 'Новый разговор',
       tabChat: 'Чат',
       tabDoc: 'Документ',
+      tabChats: 'Чаты',
+      noChats: 'Пока нет разговоров.',
       introTitle: 'Знайте, что подписываете.',
       reviewTitle: 'Проверить договор',
       reviewBody: 'Загрузите PDF, файл Word или фото страниц — или вставьте текст. Вы увидите, на что соглашаетесь и какие пункты могут вам навредить.',
@@ -192,6 +196,8 @@
       newChat: 'Yangi suhbat',
       tabChat: 'Chat',
       tabDoc: 'Hujjat',
+      tabChats: 'Suhbatlar',
+      noChats: "Hozircha suhbat yo'q.",
       introTitle: "Nimani imzolayotganingizni biling.",
       reviewTitle: 'Shartnomani tekshirish',
       reviewBody: "PDF, Word fayl yoki sahifalar suratini yuklang yoxud matnni joylashtiring. Nimaga rozi bo'layotganingiz va qaysi bandlar sizga zarar keltirishi mumkinligini ko'rasiz.",
@@ -325,6 +331,8 @@
     docs: [],
     currentDocId: null,
     hasMessages: false,
+    conversationId: null,
+    conversations: [],
   };
 
   function pickLang() {
@@ -374,6 +382,7 @@
       })
     );
     renderDocSelect();
+    renderConvoList();
     if (evalSummary) renderTrust();
     if (state.currentDocId) openDoc(state.currentDocId, { quiet: true });
   }
@@ -572,6 +581,7 @@
     $('attach').disabled = b;
     $('try-sample').disabled = b;
     $('intro-upload').disabled = b;
+    $('new-chat-side').disabled = b;
     for (const q of document.querySelectorAll('.quick button')) q.disabled = b;
   }
 
@@ -580,11 +590,12 @@
   async function sendText(text) {
     if (state.busy) return;
     setBusy(true);
+    const conversationId = await ensureConversation();
     addUserText(text);
     const progress = showProgress('thinking');
     const { ok, data } = await streamApi(
       '/api/chat',
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }) },
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, conversationId }) },
       (e) => progress.event(e)
     );
     progress.stop();
@@ -599,6 +610,7 @@
     if (files.some((f) => f.size > 20 * 1024 * 1024)) return addError('tooBig');
 
     setBusy(true);
+    const conversationId = await ensureConversation();
     const title = allImages && files.length > 1 ? `${files.length} × ${files[0].name}` : files[0].name;
     addAttachment(title, null, caption);
     const progress = showProgress('thinking');
@@ -606,6 +618,7 @@
     const form = new FormData();
     for (const f of files) form.append('files', f, f.name);
     if (caption) form.append('caption', caption);
+    form.append('conversationId', String(conversationId));
     const { ok, data } = await streamApi('/api/upload', { method: 'POST', body: form }, (e) => progress.event(e));
     progress.stop();
     setBusy(false);
@@ -620,6 +633,7 @@
     }
     addAssistant(data.reply, data.focusDocumentId);
     await loadDocs();
+    await loadConversations();
     if (!data.focusDocumentId) return;
     const doc = await openDoc(data.focusDocumentId, { quiet: isPhone() });
     if (doc && doc.kind === 'reviewed' && doc.analysis && doc.analysis.canRevise) addQuickActions(doc.id);
@@ -925,9 +939,95 @@
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // ─── Conversations: separate threads on this device ───────────────────────
+
+  async function loadConversations() {
+    const { ok, data } = await api('/api/conversations');
+    state.conversations = ok ? data.conversations : [];
+    renderConvoList();
+  }
+
+  function convoLabel(c) {
+    if (c.title) return c.title;
+    const d = new Date(c.updatedAt);
+    const loc = state.lang === 'uz' ? 'uz-Latn' : state.lang;
+    try {
+      return d.toLocaleString(loc, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch (_) {
+      return d.toLocaleString();
+    }
+  }
+
+  function renderConvoList() {
+    const ul = $('convo-list');
+    if (state.conversations.length === 0) {
+      ul.replaceChildren(el('li', 'convo-empty', S().noChats));
+      return;
+    }
+    ul.replaceChildren(
+      ...state.conversations.map((c) => {
+        const li = el('li');
+        const btn = el('button', 'convo-item' + (c.id === state.conversationId ? ' active' : ''));
+        btn.type = 'button';
+        btn.append(el('span', 'convo-title', convoLabel(c)));
+        if (c.title) btn.append(el('span', 'convo-date', new Date(c.updatedAt).toLocaleDateString()));
+        btn.addEventListener('click', () => switchConversation(c.id));
+        li.append(btn);
+        return li;
+      })
+    );
+  }
+
+  /** Replay one thread's messages into a freshly cleared chat pane. */
+  async function loadConversationMessages(id) {
+    $('messages').replaceChildren($('intro'));
+    $('intro').hidden = false;
+    state.hasMessages = false;
+    const { ok, data } = await api(`/api/history?conversationId=${id}`);
+    if (ok) {
+      for (const m of data.messages) {
+        if (m.role === 'user') addUserMessage(m.content);
+        else if (m.role === 'assistant') addAssistant(m.content);
+      }
+    }
+  }
+
+  async function switchConversation(id, opts = {}) {
+    if (state.busy) return;
+    if (state.conversationId === id && !opts.force) {
+      if (isPhone()) setPane('chat');
+      return;
+    }
+    state.conversationId = id;
+    try { localStorage.setItem('lg_convo', String(id)); } catch (_) { /* storage blocked */ }
+    renderConvoList();
+    await loadConversationMessages(id);
+    if (isPhone()) setPane('chat');
+  }
+
+  /** The sidebar's and topbar's "new chat" actions — always creates and switches. */
+  async function newConversation() {
+    if (state.busy) return;
+    const { ok, data } = await api('/api/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!ok) return addError('failed');
+    await loadConversations();
+    await switchConversation(data.id, { force: true });
+  }
+
+  /** Guarantees a thread exists before the first message of a session goes out. */
+  async function ensureConversation() {
+    if (state.conversationId) return state.conversationId;
+    await newConversation();
+    return state.conversationId;
+  }
+
   // ─── Panes (phones show one at a time) ─────────────────────────────────────
 
-  const isPhone = () => window.matchMedia('(max-width: 900px)').matches;
+  const isPhone = () => window.matchMedia('(max-width: 1000px)').matches;
 
   function setPane(name, quiet) {
     if (!isPhone()) return;
@@ -983,14 +1083,38 @@
 
   // ─── Start ─────────────────────────────────────────────────────────────────
 
-  async function restore() {
-    const { ok, data } = await api('/api/history');
-    if (ok) {
-      for (const m of data.messages) {
-        if (m.role === 'user') addUserMessage(m.content);
-        else if (m.role === 'assistant') addAssistant(m.content);
+  async function start() {
+    await loadConversations();
+
+    let wanted = null;
+    try {
+      wanted = Number(localStorage.getItem('lg_convo')) || null;
+    } catch (_) { /* storage blocked */ }
+    const remembered = wanted && state.conversations.some((c) => c.id === wanted);
+
+    if (remembered) {
+      state.conversationId = wanted;
+    } else if (state.conversations.length > 0) {
+      state.conversationId = state.conversations[0].id; // most recently active
+    } else {
+      const { ok, data } = await api('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (ok) {
+        state.conversationId = data.id;
+        await loadConversations();
       }
     }
+
+    try {
+      if (state.conversationId) localStorage.setItem('lg_convo', String(state.conversationId));
+    } catch (_) { /* storage blocked */ }
+
+    renderConvoList();
+    if (state.conversationId) await loadConversationMessages(state.conversationId);
+
     await loadDocs();
     if (state.docs.length > 0) openDoc(state.docs[0].id, { quiet: true });
   }
@@ -1032,11 +1156,8 @@
     };
     $('try-sample').addEventListener('click', () => trySample(`lease-${state.lang}.txt`)());
 
-    $('new-chat').addEventListener('click', async () => {
-      if (state.busy) return;
-      await api('/api/reset', { method: 'POST' });
-      location.reload();
-    });
+    $('new-chat').addEventListener('click', () => newConversation());
+    $('new-chat-side').addEventListener('click', () => newConversation());
 
     for (const b of document.querySelectorAll('.lang-switch button')) {
       b.addEventListener('click', () => {
@@ -1086,5 +1207,5 @@
   wire();
   applyLang();
   loadTrust();
-  restore();
+  start();
 })();
