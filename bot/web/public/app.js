@@ -346,6 +346,9 @@
 
   const S = () => STR[state.lang];
   const $ = (id) => document.getElementById(id);
+  /** The pristine empty-state markup (trust panel included), detached and
+   *  restored whenever the document pane has nothing to show for a thread. */
+  const DOC_EMPTY_EL = $('doc-empty');
 
   function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -728,6 +731,16 @@
     renderDocSelect();
   }
 
+  /** Clears the document pane back to its empty state — used when switching
+   *  to a thread that has no document of its own to show. */
+  function resetDocPane() {
+    state.currentDocId = null;
+    $('doc-toolbar').hidden = true;
+    $('doc-select').replaceChildren();
+    $('doc-actions').replaceChildren();
+    $('doc-body').replaceChildren(DOC_EMPTY_EL);
+  }
+
   function docLabel(d) {
     const kind = d.kind === 'drafted' ? S().drafted : S().reviewed;
     return `${localTitle(d.title) || '#' + d.id} · ${kind}`;
@@ -984,11 +997,25 @@
     $('intro').hidden = false;
     state.hasMessages = false;
     const { ok, data } = await api(`/api/history?conversationId=${id}`);
+    let lastDocId = null;
     if (ok) {
       for (const m of data.messages) {
-        if (m.role === 'user') addUserMessage(m.content);
-        else if (m.role === 'assistant') addAssistant(m.content);
+        if (m.role === 'user') {
+          addUserMessage(m.content);
+          const up = UPLOAD_NOTE.exec(m.content);
+          const paste = PASTE_NOTE.exec(m.content);
+          if (up) lastDocId = Number(up[2]);
+          else if (paste) lastDocId = Number(paste[1]);
+        } else if (m.role === 'assistant') addAssistant(m.content);
       }
+    }
+    // Documents aren't scoped to a thread server-side, so this thread's own
+    // last-referenced document (if any) is recovered from its own messages.
+    if (lastDocId) {
+      await loadDocs();
+      await openDoc(lastDocId, { quiet: true });
+    } else {
+      resetDocPane();
     }
   }
 
