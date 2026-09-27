@@ -153,8 +153,40 @@ button { cursor: pointer; }
 .layout {
   flex: 1;
   min-height: 0;
+  position: relative;
   display: grid;
   grid-template-columns: 220px minmax(360px, 5fr) minmax(320px, 7fr);
+  transition: grid-template-columns 0.18s ease;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 14px;
+  left: 208px;
+  z-index: 5;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  box-shadow: var(--shadow);
+  transition: left 0.18s ease;
+}
+.sidebar-toggle:hover { background: var(--bg); color: var(--ink); }
+
+/* Guarded to the width where the sidebar column actually exists — without
+   this, the extra class selector's higher specificity would outrank the
+   mobile media query below and break the single-column phone layout. */
+@media (min-width: 1001px) {
+  .layout.sidebar-collapsed { grid-template-columns: 0 minmax(360px, 5fr) minmax(320px, 7fr); }
+  .layout.sidebar-collapsed .sidebar { border-right: 0; overflow: hidden; }
+  .layout.sidebar-collapsed .sidebar-toggle { left: -3px; }
 }
 
 .pane { min-height: 0; min-width: 0; position: relative; }
@@ -781,6 +813,7 @@ mark.risk.flash { animation: flash 1.4s ease-out; }
   .pane.active { display: flex; }
   .chat-pane, .sidebar { border-right: 0; }
   .sidebar-head { padding: 12px 12px 8px; }
+  .sidebar-toggle { display: none; }
 
   .messages { padding: 14px 12px 8px; }
   .composer { padding: 8px 10px 10px; }

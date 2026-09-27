@@ -1025,6 +1025,17 @@
     return state.conversationId;
   }
 
+  /** Desktop only — the phone layout has its own Chats tab for this. */
+  function setSidebarCollapsed(collapsed) {
+    const layout = document.querySelector('.layout');
+    layout.classList.toggle('sidebar-collapsed', collapsed);
+    const btn = $('sidebar-toggle');
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    btn.setAttribute('aria-label', collapsed ? 'Expand chats' : 'Collapse chats');
+    btn.textContent = collapsed ? '\u203a' : '\u2039';
+    try { localStorage.setItem('lg_sidebar_collapsed', collapsed ? '1' : '0'); } catch (_) { /* storage blocked */ }
+  }
+
   // ─── Panes (phones show one at a time) ─────────────────────────────────────
 
   const isPhone = () => window.matchMedia('(max-width: 1000px)').matches;
@@ -1158,6 +1169,13 @@
 
     $('new-chat').addEventListener('click', () => newConversation());
     $('new-chat-side').addEventListener('click', () => newConversation());
+
+    $('sidebar-toggle').addEventListener('click', () => {
+      setSidebarCollapsed(!document.querySelector('.layout').classList.contains('sidebar-collapsed'));
+    });
+    let collapsedAtBoot = false;
+    try { collapsedAtBoot = localStorage.getItem('lg_sidebar_collapsed') === '1'; } catch (_) { /* storage blocked */ }
+    setSidebarCollapsed(collapsedAtBoot);
 
     for (const b of document.querySelectorAll('.lang-switch button')) {
       b.addEventListener('click', () => {
