@@ -21,7 +21,6 @@
       reviewBody: "Upload a PDF, Word file or photos of the pages — or paste the text. You'll see what you are agreeing to and which clauses can hurt you.",
       upload: 'Upload a file',
       trySample: 'Try a sample contract',
-      tryTricky: 'Or try one hiding a trick aimed at AI reviewers →',
       draftTitle: 'Draft a new contract',
       draftBody: "Describe the deal in your own words. You'll get a complete contract as a PDF, ready to print and sign.",
       examples: [
@@ -110,7 +109,6 @@
       reviewBody: 'Загрузите PDF, файл Word или фото страниц — или вставьте текст. Вы увидите, на что соглашаетесь и какие пункты могут вам навредить.',
       upload: 'Загрузить файл',
       trySample: 'Попробовать на примере',
-      tryTricky: 'Или пример со скрытой уловкой для ИИ-проверки →',
       draftTitle: 'Составить новый договор',
       draftBody: 'Опишите сделку своими словами. Вы получите полный договор в PDF — готовый к печати и подписи.',
       examples: [
@@ -199,7 +197,6 @@
       reviewBody: "PDF, Word fayl yoki sahifalar suratini yuklang yoxud matnni joylashtiring. Nimaga rozi bo'layotganingiz va qaysi bandlar sizga zarar keltirishi mumkinligini ko'rasiz.",
       upload: 'Fayl yuklash',
       trySample: "Namunada sinab ko'rish",
-      tryTricky: "Yoki sun'iy intellektni aldashga urinadigan namuna →",
       draftTitle: 'Yangi shartnoma tuzish',
       draftBody: "Kelishuvni o'z so'zlaringiz bilan tasvirlab bering. Chop etish va imzolashga tayyor to'liq shartnomani PDF shaklida olasiz.",
       examples: [
@@ -574,7 +571,6 @@
     $('send').disabled = b;
     $('attach').disabled = b;
     $('try-sample').disabled = b;
-    $('try-tricky').disabled = b;
     $('intro-upload').disabled = b;
     for (const q of document.querySelectorAll('.quick button')) q.disabled = b;
   }
@@ -1035,8 +1031,6 @@
       }
     };
     $('try-sample').addEventListener('click', () => trySample(`lease-${state.lang}.txt`)());
-    // The trick sample is in English only: it demonstrates detection, not language.
-    $('try-tricky').addEventListener('click', trySample('tricky-en.txt'));
 
     $('new-chat').addEventListener('click', async () => {
       if (state.busy) return;
