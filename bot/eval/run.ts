@@ -18,7 +18,7 @@ import * as fs from 'fs';
 import { eq, inArray } from 'drizzle-orm';
 
 import { db } from '../src/db';
-import { documents, messages, users } from '../src/db/schema';
+import { conversations, documents, messages, users } from '../src/db/schema';
 import { client, MODEL } from '../src/core/ai/client';
 import { runTurn, ingestFile, uploadNote } from '../src/core/service';
 import type { GroundedAnalysis } from '../src/core/documents/analyze';
@@ -534,7 +534,10 @@ async function main() {
 
   // ── Clean up throwaway users ─────────────────────────────────────────────
   const ids = [victimId, ...results.map((r) => r.userId)];
+  // Messages reference conversations, and conversations reference users —
+  // delete in that order or the foreign keys refuse the cleanup.
   await db.delete(messages).where(inArray(messages.userId, ids));
+  await db.delete(conversations).where(inArray(conversations.userId, ids));
   await db.delete(documents).where(inArray(documents.userId, ids));
   await db.delete(users).where(inArray(users.id, ids));
   process.exit(0);
