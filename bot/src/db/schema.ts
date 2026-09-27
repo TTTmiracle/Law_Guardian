@@ -48,9 +48,26 @@ export const documents = pgTable('documents', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+/**
+ * A thread within one device's chat. Telegram and the eval suite never pick
+ * one explicitly — they always get "the most recent, or a new one" — so a
+ * conversation only becomes visible as a distinct, nameable thing on the web,
+ * where people can hold several at once.
+ */
+export const conversations = pgTable('conversations', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  /** Auto-set from the first real message; null shows as a date in the UI. */
+  title: varchar('title', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const messages = pgTable('messages', {
   id: serial('id').primaryKey(),
   userId: integer('user_id').notNull().references(() => users.id),
+  /** Nullable only for rows written before threads existed. */
+  conversationId: integer('conversation_id').references(() => conversations.id),
   role: messageRoleEnum('role').notNull(),
   content: text('content').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -61,12 +78,19 @@ export const messages = pgTable('messages', {
 export const usersRelations = relations(users, ({ many }) => ({
   documents: many(documents),
   messages: many(messages),
+  conversations: many(conversations),
 }));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
   user: one(users, { fields: [documents.userId], references: [users.id] }),
 }));
 
+export const conversationsRelations = relations(conversations, ({ one, many }) => ({
+  user: one(users, { fields: [conversations.userId], references: [users.id] }),
+  messages: many(messages),
+}));
+
 export const messagesRelations = relations(messages, ({ one }) => ({
   user: one(users, { fields: [messages.userId], references: [users.id] }),
+  conversation: one(conversations, { fields: [messages.conversationId], references: [conversations.id] }),
 }));

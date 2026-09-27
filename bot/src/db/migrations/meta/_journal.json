@@ -15,6 +15,13 @@
       "when": 1790134680221,
       "tag": "0001_windy_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790516225016,
+      "tag": "0002_foamy_exodus",
+      "breakpoints": true
     }
   ]
 }
